@@ -40,6 +40,7 @@ public class LaptopApp extends JFrame {
     private JButton importDatabaseButton;
     private JButton exportDatabaseButton;
     private JLabel resultLabel;
+    private JTextArea jTextArea;
 
     private Connection connection;
     private final static String databaseUrl = "jdbc:mysql://localhost:3306/is";
@@ -53,7 +54,7 @@ public class LaptopApp extends JFrame {
         setSize(1000, 400);
 
         // Tworzenie tabeli
-        String[] columnNames = {"Nazwa producenta", "Przekątna ekranu", "Rozdzielczość", "Rodzaj ekranu",
+        String[] columnNames = {"id","Nazwa producenta", "Przekątna ekranu", "Rozdzielczość", "Rodzaj ekranu",
                 "Czy dotykowy", "Nazwa procesora", "Liczba rdzeni", "Taktowanie MHz", "Pamięć RAM", "Pojemność dysku",
                 "Rodzaj dysku", "Nazwa układu graficznego", "Pamięć układu graficznego", "Nazwa SO", "Rodzaj napędu"};
         model = new DefaultTableModel(columnNames, 0) {
@@ -133,7 +134,10 @@ public class LaptopApp extends JFrame {
             }
         });
 
+        JTextArea textArea = new JTextArea();
         JButton addNewRecordButton = new JButton("Dodaj laptop");
+        JButton deleteRecordButton = new JButton("Usuń laptop");
+        JButton editRecordButton = new JButton("Edytuj laptop");
         addNewRecordButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -141,6 +145,12 @@ public class LaptopApp extends JFrame {
             }
         });
 
+        deleteRecordButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                deleteRecord();
+            }
+        });
 
 
         // Dodawanie tabeli i przycisków do okna
@@ -166,10 +176,13 @@ public class LaptopApp extends JFrame {
         add(buttonPanel, BorderLayout.NORTH);
         add(resultPanel, BorderLayout.SOUTH);
 
-        JPanel editPanel = new JPanel(new FlowLayout(3));
-        add(editPanel, BorderLayout.EAST);
+        JPanel editPanel = new JPanel();
+        editPanel.setLayout(new GridLayout(5,2));
         editPanel.add(addNewRecordButton);
+        editPanel.add(deleteRecordButton);
+        editPanel.add(editRecordButton);
 
+        add(editPanel, BorderLayout.EAST);
 
 
     }
@@ -250,6 +263,7 @@ public class LaptopApp extends JFrame {
                     NodeList laptopNodes = doc.getElementsByTagName("laptop");
                     for (int i = 0; i < laptopNodes.getLength(); i++) {
                         Element laptopElement = (Element) laptopNodes.item(i);
+                        String id = laptopElement.getAttribute("id");
                         String manufacturer = getElementValue(laptopElement, "manufacturer");
                         Element screenElement = (Element) laptopElement.getElementsByTagName("screen").item(0);
                         String touch = screenElement.getAttribute("touch");
@@ -271,7 +285,7 @@ public class LaptopApp extends JFrame {
                         String discReader = getElementValue(laptopElement, "disc_reader");
 
 
-                        String[] parts = {manufacturer, size, resolution,
+                        String[] parts = {id,manufacturer, size, resolution,
                                 screenType, touch, processorName, cores, speed,
                                 ram, storage, discType, graphicCardName, graphicCardMemory,
                                 os, discReader};
@@ -415,7 +429,7 @@ public class LaptopApp extends JFrame {
     private void importDataFromDatabase() {
         try {
             connection = DriverManager.getConnection(databaseUrl, username, password);
-            PreparedStatement statement = connection.prepareStatement("SELECT nazwa_producenta, przekatna_ekranu, rozdzielczosc, rodzaj_ekranu, czy_dotykowy, nazwa_procesora, liczba_rdzeni, taktowanie, pamiec_ram, pojemnosc_dysku, rodzaj_dysku, nazwa_ug, pamiec_ug, nazwa_so, rodzaj_napedu FROM laptop");
+            PreparedStatement statement = connection.prepareStatement("SELECT id, nazwa_producenta, przekatna_ekranu, rozdzielczosc, rodzaj_ekranu, czy_dotykowy, nazwa_procesora, liczba_rdzeni, taktowanie, pamiec_ram, pojemnosc_dysku, rodzaj_dysku, nazwa_ug, pamiec_ug, nazwa_so, rodzaj_napedu FROM laptop");
             ResultSet resultSet = statement.executeQuery();
 
 
@@ -476,7 +490,7 @@ public class LaptopApp extends JFrame {
             statement.executeUpdate("Delete From laptop");
             for (int i = 0; i < model.getRowCount(); i++) {
                 StringBuilder values = new StringBuilder();
-                values.append("'").append(i + 1).append("',");
+//                values.append("'").append(i + 1).append("',");
                 for (int j = 0; j < model.getColumnCount(); j++) {
                     if (model.getValueAt(i, j) != "") {
                         values.append("'").append(model.getValueAt(i, j)).append("',");
@@ -571,6 +585,7 @@ public class LaptopApp extends JFrame {
             List<Map<String, Object>> list = mapper.readValue(jsonResponse, List.class);
             for (Map<String, Object> item : list) {
                 Object[] rowData = new Object[]{
+                        item.get("id"),
                         item.get("nazwaProducenta"),
                         item.get("przekatnaEkranu"),
                         item.get("rozdzielczosc"),
@@ -605,6 +620,32 @@ public class LaptopApp extends JFrame {
         } catch (IOException ex){
             ex.printStackTrace();
         }
+    }
+
+    public void deleteRecord(){
+        try {
+
+            int id = Integer.parseInt(JOptionPane.showInputDialog("Podaj id wiersza: "));
+            String urlString = "http://localhost:8080/api/laptops/deleteRecord/"+id;
+            URL url = new URL(urlString);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("DELETE");
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                JOptionPane.showMessageDialog(this, "Rekord został usunięty.", "Sukces", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "Wystąpił problem podczas usuwania rekordu.", "Błąd", JOptionPane.ERROR_MESSAGE);
+            }
+            connection.disconnect();
+
+            for(int i=0;i<model.getRowCount();i++)
+                if(model.getValueAt(i,0).equals(String.valueOf(id))){
+                    model.removeRow(i);
+                }
+        }catch (IOException ex){
+            ex.printStackTrace();
+        }
+
     }
 
 
