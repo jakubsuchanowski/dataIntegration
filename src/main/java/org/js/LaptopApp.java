@@ -36,18 +36,14 @@ public class LaptopApp extends JFrame {
     private JButton exportButton;
     private JButton importFromXmlButton;
     private JButton exportToXmlButton;
-
     private JButton importDatabaseButton;
     private JButton exportDatabaseButton;
     private JLabel resultLabel;
-    private JTextArea jTextArea;
 
     private Connection connection;
     private final static String databaseUrl = "jdbc:mysql://localhost:3306/is";
     private final static String username = "root";
     private final static String password = "root";
-
-
 
     public LaptopApp() {
         setTitle("Integracja systemów - Jakub Suchanowski");
